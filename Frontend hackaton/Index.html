@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Code Reviewer - Frontend MVP</title>
+<style>
+/* BODY & THEMES */
+body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 20px; color: black; transition: color 0.3s ease, background 0.3s ease; }
+body.dark-theme { color: #ffffff; background: #000000; }
+body.light-theme { color: #333333; background: #f0f0f0; }
+
+/* THEME SWITCHER */
+.theme-switcher { position: fixed; top: 15px; right: 15px; display: flex; gap: 8px; }
+
+/* BUTTON DESIGN */
+.button-29 { align-items: center; appearance: none; border: 0; border-radius: 6px; box-shadow: rgba(45,35,66,.4) 0 2px 4px, rgba(45,35,66,.3) 0 7px 13px -3px, rgba(58,65,111,.5) 0 -3px 0 inset; box-sizing: border-box; color: #fff; cursor: pointer; display: inline-flex; font-family: "JetBrains Mono", monospace; height: 40px; justify-content: center; line-height: 1; padding-left: 16px; padding-right: 16px; position: relative; text-decoration: none; transition: box-shadow .15s, transform .15s, background .3s; user-select: none; white-space: nowrap; will-change: box-shadow, transform; font-size: 14px; }
+#darkTextBtn { background-color: #000; }
+#lightTextBtn { background-color: #f0f0f0; color: #333; }
+#analyzeBtn { background-color: #FFA500; color: #fff; font-size: 15px; height: 40px; margin-top: 25px; }
+.button-29:hover, #analyzeBtn:hover { box-shadow: rgba(45,35,66,.4) 0 4px 8px, rgba(45,35,66,.3) 0 7px 13px -3px, #3c4fe0 0 -3px 0 inset; transform: translateY(-2px); }
+.button-29:active, #analyzeBtn:active { box-shadow: #3c4fe0 0 3px 7px inset; transform: translateY(2px); }
+.button-29:focus, #analyzeBtn:focus { box-shadow: #3c4fe0 0 0 0 1.5px inset, rgba(45,35,66,.4) 0 2px 4px, rgba(45,35,66,.3) 0 7px 13px -3px, #3c4fe0 0 -3px 0 inset; }
+
+/* TITLE STYLE */
+.button-29-title { align-items: center; display: inline-flex; justify-content: center; font-family: "JetBrains Mono", monospace; font-size: 28px; font-weight: bold; padding: 12px 20px; border-radius: 6px; box-shadow: rgba(45,35,66,.4) 0 2px 4px, rgba(45,35,66,.3) 0 7px 13px -3px, rgba(58,65,111,.5) 0 -3px 0 inset; background-color: #FFA500; color: #fff; text-align: center; margin: 0 auto 20px auto; transition: box-shadow .15s, transform .15s, background .3s; cursor: default; }
+
+/* CONTAINER */
+.container { width: 90%; max-width: 900px; margin: auto; margin-top: 60px; }
+textarea { width: 100%; height: 300px; padding: 10px; font-family: Consolas, monospace; font-size: 14px; border: 1px solid #ccc; border-radius: 6px; resize: vertical; background: #fff; color: black; transition: background 0.3s, color 0.3s; }
+body.dark-theme textarea { background: #000; color: #fff; border-color: #333; }
+body.light-theme textarea { background: #f0f0f0; color: #333; border-color: #ccc; }
+
+/* UPLOAD SECTION */
+.upload-section { margin-top: 20px; padding: 20px; border: 2px dashed #999; border-radius: 6px; text-align: center; color: inherit; background: #fff; transition: background 0.3s, color 0.3s, border-color 0.3s; }
+body.dark-theme .upload-section { background: #000; border-color: #333; color: #fff; }
+body.light-theme .upload-section { background: #f0f0f0; border-color: #ccc; color: #333; }
+.upload-section.dragover { background: #d7e7ff; border-color: #2a80ff; color: #2a80ff; }
+body.dark-theme .upload-section.dragover { background: #333; color: #fff; }
+body.light-theme .upload-section.dragover { background: #e0e0e0; color: #333; }
+.file-info { margin-top: 10px; font-style: italic; }
+
+/* LLM Analysis Box */
+#analysis-box { margin-top: 20px; padding: 10px; border: 2px solid #FFA500; border-radius: 6px; background: #f9f9f9; color: #000; max-height: 500px; overflow-y: auto; white-space: pre-wrap; font-family: Consolas, monospace; font-size: 13px; }
+body.dark-theme #analysis-box { background: #111; color: #fff; border-color: #FFA500; }
+body.light-theme #analysis-box { background: #f9f9f9; color: #000; border-color: #FFA500; }
+</style>
+</head>
+<body class="light-theme">
+
+<div class="theme-switcher">
+<button class="button-29" id="darkTextBtn" role="button">Dark Text</button>
+<button class="button-29" id="lightTextBtn" role="button">Light Text</button>
+</div>
+
+<div class="container">
+<div class="button-29-title">AI Code Reviewer</div>
+<textarea id="codeInput" placeholder="Paste or write your code here..."></textarea>
+
+<div class="upload-section" id="dropArea">
+Drag & Drop file here or <br><br>
+<input type="file" id="fileInput" accept=".py,.js,.java,.cpp,.ts,.cs,.php,.rb,.go,.rs" />
+<div class="file-info" id="fileInfo"></div>
+</div>
+
+<button id="analyzeBtn" class="button-29">Analyze Code</button>
+<div id="analysis-box">Analysis output will appear here...</div>
+</div>
+
+<script>
+const fileInput = document.getElementById("fileInput");
+const codeInput = document.getElementById("codeInput");
+const dropArea = document.getElementById("dropArea");
+const fileInfo = document.getElementById("fileInfo");
+const analysisBox = document.getElementById("analysis-box");
+
+const darkTextBtn = document.getElementById("darkTextBtn");
+const lightTextBtn = document.getElementById("lightTextBtn");
+
+darkTextBtn.addEventListener("click", () => {
+    document.body.classList.add("dark-theme");
+    document.body.classList.remove("light-theme");
+});
+lightTextBtn.addEventListener("click", () => {
+    document.body.classList.add("light-theme");
+    document.body.classList.remove("dark-theme");
+});
+
+fileInput.addEventListener("change", e => { const file = e.target.files[0]; if(file) readFile(file); });
+dropArea.addEventListener("dragover", e => { e.preventDefault(); dropArea.classList.add("dragover"); });
+dropArea.addEventListener("dragleave", () => { dropArea.classList.remove("dragover"); });
+dropArea.addEventListener("drop", e => { e.preventDefault(); dropArea.classList.remove("dragover"); const file = e.dataTransfer.files[0]; if(file) readFile(file); });
+
+function readFile(file) {
+    const reader = new FileReader();
+    reader.onload = e => { codeInput.value = e.target.result; fileInfo.textContent = "Loaded file: " + file.name; };
+    reader.readAsText(file);
+}
+
+// --- Analyze button ---
+document.getElementById("analyzeBtn").addEventListener("click", async () => {
+    const code = codeInput.value.trim();
+    if (!code) { alert("Please write or upload code before analyzing."); return; }
+    analysisBox.textContent = "Analyzing code...";
+
+    try {
+        const response = await fetch("http://127.0.0.1:8000/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code })
+        });
+
+        if (!response.ok) throw new Error("Backend error: " + response.status);
+        const data = await response.json();
+        // backend returns: { formatted_analysis: "...", raw: {...} }
+        const analysis = data.formatted_analysis;
+
+        if (!analysis) {
+            analysisBox.textContent = "No analysis returned.";
+            return;
+        }
+
+        analysisBox.textContent = analysis;
+
+    } catch (err) {
+        analysisBox.textContent = "Error: " + err.message;
+    }
+});
+</script>
+</body>
+</html>
